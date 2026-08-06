@@ -184,4 +184,45 @@ router.post('/:id/copy', verifyAuth, async (req, res) => {
   }
 });
 
+// Reviews
+
+const Review = require('../models/Review');
+
+// Get reviews for a prompt
+router.get('/:id/reviews', async (req, res) => {
+  try {
+    const reviews = await Review.find({ prompt: req.params.id })
+      .populate('user', 'name photoURL role')
+      .sort({ createdAt: -1 });
+    res.json({ success: true, reviews });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Add a review
+router.post('/:id/reviews', verifyAuth, async (req, res) => {
+  try {
+    const { rating, comment } = req.body;
+    
+    // Check if user already reviewed
+    const existingReview = await Review.findOne({ prompt: req.params.id, user: req.user.id });
+    if (existingReview) {
+      return res.status(400).json({ success: false, message: 'You have already reviewed this prompt.' });
+    }
+    
+    const review = new Review({
+      prompt: req.params.id,
+      user: req.user.id,
+      rating,
+      comment
+    });
+    
+    await review.save();
+    res.status(201).json({ success: true, review });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
