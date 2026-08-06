@@ -7,8 +7,15 @@ const db = client.db();
 
 const auth = betterAuth({
   database: mongodbAdapter(db),
+  trustedOrigins: [process.env.CLIENT_URL || "http://localhost:3000", "https://prompt-client-suf9.vercel.app"],
   emailAndPassword: {
     enabled: true,
+  },
+  advanced: {
+    defaultCookieAttributes: {
+      sameSite: "none",
+      secure: true,
+    }
   },
   socialProviders: {
     google: {
