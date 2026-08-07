@@ -7,10 +7,12 @@ const db = client.db();
 
 const auth = betterAuth({
   database: mongodbAdapter(db),
-  trustedOrigins: (origin) => {
-    if (!origin) return true;
-    return origin.endsWith('.vercel.app') || origin.includes('localhost') || origin === process.env.CLIENT_URL;
-  },
+  trustedOrigins: [
+    process.env.CLIENT_URL || "http://localhost:3000",
+    "http://localhost:3000",
+    "https://prompt-client-suf9.vercel.app",
+    "https://*.vercel.app"
+  ],
   emailAndPassword: {
     enabled: true,
   },
