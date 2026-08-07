@@ -98,7 +98,7 @@ router.post('/', verifyAuth, async (req, res) => {
     const newPrompt = new Prompt({
       ...req.body,
       creator: req.user.id,
-      status: 'pending',
+      status: 'approved',
       copyCount: 0
     });
     

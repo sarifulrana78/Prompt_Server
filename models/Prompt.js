@@ -45,15 +45,15 @@ const promptSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['pending', 'approved', 'rejected'],
-    default: 'pending',
+    default: 'approved',
   },
   creator: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: String,
     ref: 'User',
     required: true,
   },
   bookmarkedBy: [{
-    type: mongoose.Schema.Types.ObjectId,
+    type: String,
     ref: 'User',
   }],
 }, { timestamps: true });
