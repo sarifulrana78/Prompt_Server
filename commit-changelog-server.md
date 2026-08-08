@@ -12,3 +12,4 @@
 - Added note: better-auth MongoDB adapter initialized with MongoClient DB instance.
 - Added note: Google social provider configured under better-auth socialProviders.
 - Added note: /api/auth route is ready for frontend proxied auth requests.
+- Added note: auth cookies are configured based on environment settings.
