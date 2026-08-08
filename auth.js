@@ -10,6 +10,7 @@ const auth = betterAuth({
   trustedOrigins: [
     process.env.CLIENT_URL || "http://localhost:3000",
     "http://localhost:3000",
+    "http://127.0.0.1:3000",
     "https://prompt-client-suf9.vercel.app",
     "https://*.vercel.app"
   ],
@@ -18,8 +19,8 @@ const auth = betterAuth({
   },
   advanced: {
     defaultCookieAttributes: {
-      sameSite: "none",
-      secure: true,
+      sameSite: 'none',
+      secure: process.env.NODE_ENV === 'production',
     }
   },
   socialProviders: {
