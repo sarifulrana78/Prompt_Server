@@ -8,3 +8,4 @@
 - Added note: express.json and urlencoded middleware handle auth and API requests.
 - Added note: root / route returns API running status.
 - Added note: centralized Express error handler logs and returns server errors.
+- Added note: auth config reads CLIENT_URL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET from env.
