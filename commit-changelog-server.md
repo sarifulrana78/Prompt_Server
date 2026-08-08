@@ -17,3 +17,4 @@
 - Added note: connection failure now logs an error and exits process.
 - Added note: DNS servers are explicitly set for SRV host resolution reliability.
 - Added note: fallback values are used when env vars are missing in dev.
+- Added note: auth config trusted origins and cookie attributes are normalized for dev and prod.
