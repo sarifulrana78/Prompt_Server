@@ -7,3 +7,4 @@
 - Added note: database connection warns when MONGODB_URI is missing.
 - Added note: express.json and urlencoded middleware handle auth and API requests.
 - Added note: root / route returns API running status.
+- Added note: centralized Express error handler logs and returns server errors.
