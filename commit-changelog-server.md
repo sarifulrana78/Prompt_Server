@@ -14,3 +14,4 @@
 - Added note: /api/auth route is ready for frontend proxied auth requests.
 - Added note: auth cookies are configured based on environment settings.
 - Added note: CORS credentials enabled for cookie auth flows.
+- Added note: connection failure now logs an error and exits process.
