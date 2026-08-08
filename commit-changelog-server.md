@@ -15,3 +15,4 @@
 - Added note: auth cookies are configured based on environment settings.
 - Added note: CORS credentials enabled for cookie auth flows.
 - Added note: connection failure now logs an error and exits process.
+- Added note: DNS servers are explicitly set for SRV host resolution reliability.
