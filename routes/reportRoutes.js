@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Report = require('../models/Report');
 const Prompt = require('../models/Prompt');
-const { verifyAuth } = require('../middlewares/authMiddleware');
+const { verifyAuth, verifyRole } = require('../middlewares/authMiddleware');
 
 router.post('/', verifyAuth, async (req, res) => {
   try {
@@ -24,7 +24,7 @@ router.post('/', verifyAuth, async (req, res) => {
   }
 });
 
-router.get('/', verifyAuth, async (req, res) => {
+router.get('/', verifyAuth, verifyRole('Admin'), async (req, res) => {
   try {
     const reports = await Report.find().populate('prompt', 'title').populate('user', 'name email');
     res.json({ success: true, reports });
@@ -33,7 +33,7 @@ router.get('/', verifyAuth, async (req, res) => {
   }
 });
 
-router.put('/:id/status', verifyAuth, async (req, res) => {
+router.put('/:id/status', verifyAuth, verifyRole('Admin'), async (req, res) => {
   try {
     const { status } = req.body;
     if (!['pending', 'resolved', 'dismissed'].includes(status)) {

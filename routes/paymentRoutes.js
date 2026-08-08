@@ -3,7 +3,7 @@ const router = express.Router();
 const Stripe = require('stripe');
 const User = require('../models/User');
 const Payment = require('../models/Payment');
-const { verifyAuth } = require('../middlewares/authMiddleware');
+const { verifyAuth, verifyRole } = require('../middlewares/authMiddleware');
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -65,6 +65,15 @@ router.post('/verify-payment', verifyAuth, async (req, res) => {
     } else {
       res.status(400).json({ success: false, message: 'Payment verification failed' });
     }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get('/admin', verifyAuth, verifyRole('Admin'), async (req, res) => {
+  try {
+    const payments = await Payment.find().populate('user', 'name email').sort({ createdAt: -1 });
+    res.json({ success: true, payments });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

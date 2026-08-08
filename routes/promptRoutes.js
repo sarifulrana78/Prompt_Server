@@ -58,6 +58,36 @@ router.get('/featured', async (req, res) => {
   }
 });
 
+// Get trending prompts via activity score
+router.get('/trending', async (req, res) => {
+  try {
+    const reviews = require('../models/Review');
+    const trending = await Prompt.aggregate([
+      { $match: { visibility: 'Public', status: 'approved' } },
+      {
+        $lookup: {
+          from: 'reviews',
+          localField: '_id',
+          foreignField: 'prompt',
+          as: 'reviews',
+        },
+      },
+      {
+        $addFields: {
+          reviewCount: { $size: '$reviews' },
+          score: { $add: ['$copyCount', { $multiply: [{ $size: '$reviews' }, 2] }] },
+        },
+      },
+      { $sort: { score: -1, copyCount: -1, createdAt: -1 } },
+      { $limit: 6 },
+    ]);
+    const prompts = await Prompt.populate(trending, { path: 'creator', select: 'name photoURL' });
+    res.json({ success: true, prompts });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Get single prompt details (Private Route - user must be logged in to view details)
 router.get('/:id', verifyAuth, async (req, res) => {
   try {
@@ -179,6 +209,35 @@ router.post('/:id/copy', verifyAuth, async (req, res) => {
     prompt.copyCount += 1;
     await prompt.save();
     res.json({ success: true, copyCount: prompt.copyCount });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Fork a prompt into the current user's collection
+router.post('/:id/fork', verifyAuth, async (req, res) => {
+  try {
+    const prompt = await Prompt.findById(req.params.id);
+    if (!prompt) return res.status(404).json({ success: false, message: 'Prompt not found' });
+    
+    const forked = new Prompt({
+      title: prompt.title,
+      description: prompt.description,
+      content: prompt.content,
+      category: prompt.category,
+      aiTool: prompt.aiTool,
+      tags: prompt.tags,
+      difficulty: prompt.difficulty,
+      thumbnail: prompt.thumbnail,
+      visibility: prompt.visibility,
+      copyCount: 0,
+      status: 'pending',
+      creator: req.user.id,
+      bookmarkedBy: [],
+    });
+    await forked.save();
+
+    res.status(201).json({ success: true, prompt: forked });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
