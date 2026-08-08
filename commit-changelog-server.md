@@ -6,3 +6,4 @@
 - Added note: better-auth is mounted on /api/auth with Express toNodeHandler integration.
 - Added note: database connection warns when MONGODB_URI is missing.
 - Added note: express.json and urlencoded middleware handle auth and API requests.
+- Added note: root / route returns API running status.
