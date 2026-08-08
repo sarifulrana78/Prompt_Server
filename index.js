@@ -14,17 +14,22 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, or same-origin)
     if (!origin) return callback(null, true);
-    // Allow any .vercel.app deployment URL or localhost or configured CLIENT_URL
-    if (
-      origin.endsWith('.vercel.app') || 
-      origin.includes('localhost') || 
-      origin === process.env.CLIENT_URL
-    ) {
+
+    const allowedOrigins = [
+      process.env.CLIENT_URL,
+      'http://localhost:3000',
+      'http://127.0.0.1:3000'
+    ].filter(Boolean);
+
+    const isVercel = origin.endsWith('.vercel.app');
+    const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
+
+    if (allowedOrigins.includes(origin) || isVercel || isLocalhost) {
       return callback(null, true);
     }
-    callback(null, true); // Fallback: allow all origins with credentials
+
+    callback(new Error('CORS policy: This origin is not allowed.'));
   },
   credentials: true
 }));
