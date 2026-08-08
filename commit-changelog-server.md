@@ -10,3 +10,4 @@
 - Added note: centralized Express error handler logs and returns server errors.
 - Added note: auth config reads CLIENT_URL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET from env.
 - Added note: better-auth MongoDB adapter initialized with MongoClient DB instance.
+- Added note: Google social provider configured under better-auth socialProviders.
