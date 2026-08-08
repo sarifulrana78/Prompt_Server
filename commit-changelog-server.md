@@ -3,3 +3,4 @@
 - Added note: secure cookie flag is enabled only in production.
 - Added note: DNS public resolvers added for MongoDB Atlas SRV lookups.
 - Added note: CORS allows localhost, configured client URL, and Vercel domains.
+- Added note: better-auth is mounted on /api/auth with Express toNodeHandler integration.
