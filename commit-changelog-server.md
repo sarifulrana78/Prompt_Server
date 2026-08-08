@@ -2,3 +2,4 @@
 - Added note: trustedOrigins now include 127.0.0.1 for local dev.
 - Added note: secure cookie flag is enabled only in production.
 - Added note: DNS public resolvers added for MongoDB Atlas SRV lookups.
+- Added note: CORS allows localhost, configured client URL, and Vercel domains.
