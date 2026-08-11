@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Prompt = require('../models/Prompt');
+const Review = require('../models/Review');
 const { verifyAuth, verifyRole } = require('../middlewares/authMiddleware');
 
 // Get current user profile
@@ -40,6 +41,56 @@ router.get('/saved-prompts', verifyAuth, async (req, res) => {
   }
 });
 
+// Get user's reviews
+router.get('/my-reviews', verifyAuth, async (req, res) => {
+  try {
+    const reviews = await Review.find({ user: req.user.id })
+      .populate('prompt', 'title category aiTool')
+      .sort({ createdAt: -1 });
+    res.json({ success: true, reviews });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Creator analytics
+router.get('/creator-analytics', verifyAuth, async (req, res) => {
+  try {
+    const prompts = await Prompt.find({ creator: req.user.id });
+    const totalPrompts = prompts.length;
+    const totalCopies = prompts.reduce((acc, p) => acc + (p.copyCount || 0), 0);
+    const totalBookmarks = prompts.reduce((acc, p) => acc + (p.bookmarkedBy?.length || 0), 0);
+
+    // Reviews count
+    const promptIds = prompts.map(p => p._id);
+    const totalReviews = await Review.countDocuments({ prompt: { $in: promptIds } });
+
+    // Copies per prompt (for chart)
+    const copiesChart = prompts.slice(0, 8).map(p => ({
+      name: p.title.length > 20 ? p.title.substring(0, 20) + '...' : p.title,
+      copies: p.copyCount || 0,
+    }));
+
+    // Prompt growth by month (last 6 months)
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const promptGrowth = await Prompt.aggregate([
+      { $match: { creator: req.user.id, createdAt: { $gte: sixMonthsAgo } } },
+      {
+        $group: {
+          _id: { month: { $month: '$createdAt' }, year: { $year: '$createdAt' } },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } },
+    ]);
+
+    res.json({ success: true, analytics: { totalPrompts, totalCopies, totalBookmarks, totalReviews, copiesChart, promptGrowth } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Admin Route: Get all users
 router.get('/admin/all', verifyAuth, verifyRole('Admin'), async (req, res) => {
   try {
@@ -69,7 +120,6 @@ router.put('/admin/role/:id', verifyAuth, verifyRole('Admin'), async (req, res) 
 router.delete('/admin/:id', verifyAuth, verifyRole('Admin'), async (req, res) => {
   try {
     await User.findByIdAndDelete(req.params.id);
-    // Might also want to delete user's prompts or set them to a deleted state
     res.json({ success: true, message: 'User deleted' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
