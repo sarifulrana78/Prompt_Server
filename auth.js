@@ -7,9 +7,11 @@ const db = client.db();
 
 const auth = betterAuth({
   database: mongodbAdapter(db),
+  baseURL: process.env.CLIENT_URL || "http://localhost:3000",
   trustedOrigins: [
     process.env.CLIENT_URL || "http://localhost:3000",
     "http://localhost:3000",
+    "http://localhost:5000",
     "http://127.0.0.1:3000",
     "https://prompt-client-suf9.vercel.app",
     "https://*.vercel.app"
@@ -17,16 +19,11 @@ const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
-  advanced: {
-    defaultCookieAttributes: {
-      sameSite: 'none',
-      secure: process.env.NODE_ENV === 'production',
-    }
-  },
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      redirectURI: `${process.env.CLIENT_URL || "http://localhost:3000"}/api/auth/callback/google`,
     }
   },
   user: {
