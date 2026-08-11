@@ -45,7 +45,15 @@ const promptSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['pending', 'approved', 'rejected'],
-    default: 'approved',
+    default: 'pending',
+  },
+  rejectionReason: {
+    type: String,
+    default: '',
+  },
+  isFeatured: {
+    type: Boolean,
+    default: false,
   },
   creator: {
     type: String,

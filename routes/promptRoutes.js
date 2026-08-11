@@ -12,7 +12,11 @@ router.get('/', async (req, res) => {
     const query = { visibility: 'Public', status: 'approved' };
     
     if (search) {
-      query.title = { $regex: search, $options: 'i' };
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { tags: { $regex: search, $options: 'i' } },
+        { aiTool: { $regex: search, $options: 'i' } },
+      ];
     }
     if (category) query.category = category;
     if (aiTool) query.aiTool = aiTool;
@@ -20,7 +24,7 @@ router.get('/', async (req, res) => {
     
     // Build sort
     let sortOptions = { createdAt: -1 };
-    if (sort === 'popular') sortOptions = { copyCount: -1 }; // Or calculate by rating later
+    if (sort === 'popular') sortOptions = { copyCount: -1 };
     if (sort === 'copies') sortOptions = { copyCount: -1 };
     if (sort === 'latest') sortOptions = { createdAt: -1 };
 
@@ -58,10 +62,9 @@ router.get('/featured', async (req, res) => {
   }
 });
 
-// Get trending prompts via activity score
+// Get trending prompts via activity score (MongoDB Aggregation)
 router.get('/trending', async (req, res) => {
   try {
-    const reviews = require('../models/Review');
     const trending = await Prompt.aggregate([
       { $match: { visibility: 'Public', status: 'approved' } },
       {
@@ -83,6 +86,46 @@ router.get('/trending', async (req, res) => {
     ]);
     const prompts = await Prompt.populate(trending, { path: 'creator', select: 'name photoURL' });
     res.json({ success: true, prompts });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get top creators (MongoDB Aggregation)
+router.get('/top-creators', async (req, res) => {
+  try {
+    const topCreators = await Prompt.aggregate([
+      { $match: { visibility: 'Public', status: 'approved' } },
+      {
+        $group: {
+          _id: '$creator',
+          totalPrompts: { $sum: 1 },
+          totalCopies: { $sum: '$copyCount' },
+        },
+      },
+      { $sort: { totalCopies: -1 } },
+      { $limit: 6 },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'creatorInfo',
+        },
+      },
+      { $unwind: { path: '$creatorInfo', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 1,
+          totalPrompts: 1,
+          totalCopies: 1,
+          name: '$creatorInfo.name',
+          photoURL: '$creatorInfo.image',
+          role: '$creatorInfo.role',
+        },
+      },
+    ]);
+    res.json({ success: true, creators: topCreators });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -117,7 +160,7 @@ router.get('/:id', verifyAuth, async (req, res) => {
 // Add a new prompt (User/Creator)
 router.post('/', verifyAuth, async (req, res) => {
   try {
-    // Check limit for free users
+    // Check limit for free users (only regular Users, not Creators/Admins)
     if (req.user.subscription === 'Free' && req.user.role === 'User') {
       const count = await Prompt.countDocuments({ creator: req.user.id });
       if (count >= 3) {
@@ -128,7 +171,7 @@ router.post('/', verifyAuth, async (req, res) => {
     const newPrompt = new Prompt({
       ...req.body,
       creator: req.user.id,
-      status: 'approved',
+      status: 'pending',
       copyCount: 0
     });
     
@@ -145,11 +188,13 @@ router.put('/:id', verifyAuth, async (req, res) => {
     const prompt = await Prompt.findById(req.params.id);
     if (!prompt) return res.status(404).json({ success: false, message: 'Not found' });
     
-    if (prompt.creator.toString() !== req.user.id) {
+    if (prompt.creator.toString() !== req.user.id && req.user.role !== 'Admin') {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
     
-    const updatedPrompt = await Prompt.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    // Don't allow status manipulation via this route
+    const { status, ...updateData } = req.body;
+    const updatedPrompt = await Prompt.findByIdAndUpdate(req.params.id, updateData, { new: true });
     res.json({ success: true, prompt: updatedPrompt });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -221,7 +266,7 @@ router.post('/:id/fork', verifyAuth, async (req, res) => {
     if (!prompt) return res.status(404).json({ success: false, message: 'Prompt not found' });
     
     const forked = new Prompt({
-      title: prompt.title,
+      title: `[Fork] ${prompt.title}`,
       description: prompt.description,
       content: prompt.content,
       category: prompt.category,
@@ -229,7 +274,7 @@ router.post('/:id/fork', verifyAuth, async (req, res) => {
       tags: prompt.tags,
       difficulty: prompt.difficulty,
       thumbnail: prompt.thumbnail,
-      visibility: prompt.visibility,
+      visibility: 'Public',
       copyCount: 0,
       status: 'pending',
       creator: req.user.id,
@@ -278,7 +323,29 @@ router.post('/:id/reviews', verifyAuth, async (req, res) => {
     });
     
     await review.save();
-    res.status(201).json({ success: true, review });
+    const populated = await review.populate('user', 'name photoURL');
+    res.status(201).json({ success: true, review: populated });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Report a prompt
+router.post('/:id/report', verifyAuth, async (req, res) => {
+  try {
+    const Report = require('../models/Report');
+    const { reason, description } = req.body;
+    const prompt = await Prompt.findById(req.params.id);
+    if (!prompt) return res.status(404).json({ success: false, message: 'Prompt not found.' });
+
+    const report = new Report({
+      prompt: req.params.id,
+      user: req.user.id,
+      reason,
+      description,
+    });
+    await report.save();
+    res.status(201).json({ success: true, report });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
