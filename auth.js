@@ -1,5 +1,6 @@
 const { betterAuth } = require("better-auth");
 const { mongodbAdapter } = require("better-auth/adapters/mongodb");
+const { jwt } = require("better-auth/plugins");
 const { MongoClient } = require("mongodb");
 
 const client = new MongoClient(process.env.MONGODB_URI || "mongodb://localhost:27017/promptbase");
@@ -15,6 +16,13 @@ const auth = betterAuth({
     "http://127.0.0.1:3000",
     "https://prompt-client-suf9.vercel.app",
     "https://*.vercel.app"
+  ],
+  plugins: [
+    jwt({
+      jwt: {
+        expirationTime: "7d",
+      }
+    })
   ],
   emailAndPassword: {
     enabled: true,
