@@ -65,11 +65,29 @@ router.get('/creator-analytics', verifyAuth, async (req, res) => {
     const promptIds = prompts.map(p => p._id);
     const totalReviews = await Review.countDocuments({ prompt: { $in: promptIds } });
 
-    // Copies per prompt (for chart)
-    const copiesChart = prompts.slice(0, 8).map(p => ({
+    // Metrics per prompt (for BarChart)
+    const metricsChart = prompts.slice(0, 8).map(p => ({
       name: p.title.length > 20 ? p.title.substring(0, 20) + '...' : p.title,
       copies: p.copyCount || 0,
+      bookmarks: p.bookmarkedBy?.length || 0,
     }));
+
+    // Generate Accumulative Growth data for the AreaChart (mocked over last 7 days based on current totals to match UI prototype)
+    const accumulativeGrowth = [];
+    const today = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0]; // YYYY-MM-DD
+      
+      // Interpolate from 0 to current totals
+      const multiplier = (7 - i) / 7;
+      accumulativeGrowth.push({
+        date: dateStr,
+        TotalPrompts: Math.floor(totalPrompts * multiplier),
+        TotalCopies: Math.floor(totalCopies * multiplier),
+      });
+    }
 
     // Prompt growth by month (last 6 months)
     const sixMonthsAgo = new Date();
@@ -85,7 +103,7 @@ router.get('/creator-analytics', verifyAuth, async (req, res) => {
       { $sort: { '_id.year': 1, '_id.month': 1 } },
     ]);
 
-    res.json({ success: true, analytics: { totalPrompts, totalCopies, totalBookmarks, totalReviews, copiesChart, promptGrowth } });
+    res.json({ success: true, analytics: { totalPrompts, totalCopies, totalBookmarks, totalReviews, metricsChart, accumulativeGrowth, promptGrowth } });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

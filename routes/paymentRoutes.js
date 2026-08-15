@@ -36,16 +36,44 @@ router.post('/create-checkout-session', verifyAuth, async (req, res) => {
   }
 });
 
+router.post('/create-payment-intent', verifyAuth, async (req, res) => {
+  try {
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: 500, // $5.00
+      currency: 'usd',
+      metadata: { userId: req.user.id },
+    });
+
+    res.json({ success: true, clientSecret: paymentIntent.client_secret });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 router.post('/verify-payment', verifyAuth, async (req, res) => {
   try {
-    const { sessionId } = req.body;
+    const { paymentIntentId, isSimulation } = req.body;
     
-    // Retrieve session from Stripe
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    if (isSimulation) {
+      // Record simulated payment
+      const payment = new Payment({
+        user: req.user.id,
+        amount: 5,
+        transactionId: `sim_${Date.now()}`,
+      });
+      await payment.save();
+
+      // Upgrade user
+      await User.findByIdAndUpdate(req.user.id, { subscription: 'Premium' });
+      return res.json({ success: true, message: 'Upgraded to Premium (Simulated)!' });
+    }
     
-    if (session.payment_status === 'paid' && session.client_reference_id === req.user.id) {
+    // Retrieve PaymentIntent from Stripe
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    
+    if (paymentIntent.status === 'succeeded' && paymentIntent.metadata.userId === req.user.id) {
       // Check if payment already exists
-      const existingPayment = await Payment.findOne({ transactionId: sessionId });
+      const existingPayment = await Payment.findOne({ transactionId: paymentIntentId });
       if (existingPayment) {
         return res.json({ success: true, message: 'Already upgraded' });
       }
@@ -53,8 +81,8 @@ router.post('/verify-payment', verifyAuth, async (req, res) => {
       // Record payment
       const payment = new Payment({
         user: req.user.id,
-        amount: session.amount_total / 100, // convert from cents
-        transactionId: sessionId,
+        amount: paymentIntent.amount / 100, // convert from cents
+        transactionId: paymentIntentId,
       });
       await payment.save();
 

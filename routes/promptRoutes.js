@@ -7,9 +7,8 @@ const { verifyAuth, verifyRole } = require('../middlewares/authMiddleware');
 router.get('/', async (req, res) => {
   try {
     const { search, category, aiTool, difficulty, sort, page = 1, limit = 9 } = req.query;
-    
-    // Build query
-    const query = { visibility: 'Public', status: 'approved' };
+    // Build query - allow both Public and Private (Premium) prompts
+    const query = { status: 'approved' };
     
     if (search) {
       query.$or = [
@@ -52,7 +51,7 @@ router.get('/', async (req, res) => {
 // Get featured prompts
 router.get('/featured', async (req, res) => {
   try {
-    const prompts = await Prompt.find({ visibility: 'Public', status: 'approved' })
+    const prompts = await Prompt.find({ status: 'approved' })
       .populate('creator', 'name photoURL')
       .sort({ copyCount: -1 })
       .limit(6);
@@ -66,7 +65,7 @@ router.get('/featured', async (req, res) => {
 router.get('/trending', async (req, res) => {
   try {
     const trending = await Prompt.aggregate([
-      { $match: { visibility: 'Public', status: 'approved' } },
+      { $match: { status: 'approved' } },
       {
         $lookup: {
           from: 'reviews',
@@ -95,7 +94,7 @@ router.get('/trending', async (req, res) => {
 router.get('/top-creators', async (req, res) => {
   try {
     const topCreators = await Prompt.aggregate([
-      { $match: { visibility: 'Public', status: 'approved' } },
+      { $match: { status: 'approved' } },
       {
         $group: {
           _id: '$creator',
